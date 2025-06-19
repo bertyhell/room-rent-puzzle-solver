@@ -126,4 +126,14 @@ export class Grid {
       console.log(rowString);
     }
   }
+
+  public clone(): Grid {
+    const newGridInstance = new Grid(this.rows, this.cols);
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        newGridInstance.set(r, c, this.get(r, c));
+      }
+    }
+    return newGridInstance;
+  }
 }
