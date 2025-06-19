@@ -43,9 +43,9 @@ export function solvePuzzle(initialGrid: Grid): Grid | null {
 
   const totalPossibleStates = BigInt(2) ** BigInt(M);
   let statesExplored = BigInt(0);
-  // Store as progress * 1000 to avoid float issues, and ensure it's an integer for comparison
-  let lastReportedProgressPercentageTimes1000 = -1;
-  const progressIncrementPercentageTimes1000 = 1; // Represents 0.1% increments (0.1 * 1000 = 1)
+  // Store as progress * 100000 for 0.001% precision
+  let lastReportedProgressPercentageTimes100000 = -1;
+  const progressIncrementPercentageTimes100000 = 1; // Represents 0.001% increments (0.001 * 100000 = 1)
 
   // Create a working copy of the grid for the DFS to modify
   const workingGrid = initialGrid.clone();
@@ -54,14 +54,13 @@ export function solvePuzzle(initialGrid: Grid): Grid | null {
     statesExplored++;
 
     // Progress Reporting
-    if (M > 0 && totalPossibleStates > 0) { // Avoid division by zero if M=0 (though handled above)
-        // Calculate current progress scaled by 10000 (for 0.01% precision to be safe with floor)
-        const currentProgressScaled = (statesExplored * BigInt(100000)) / totalPossibleStates; // 1000 * 100
-        const currentProgressPercentageTimes1000 = Number(currentProgressScaled) / 100; // Convert to number for comparison with float-based threshold
+    if (M > 0 && totalPossibleStates > 0) {
+        // Calculate current progress scaled by 100000 (for 0.001% precision) * 100 (for percentage)
+        const currentProgressPercentageTimes100000 = Number((statesExplored * BigInt(100000) * BigInt(100)) / totalPossibleStates);
 
-        if (currentProgressPercentageTimes1000 >= lastReportedProgressPercentageTimes1000 + progressIncrementPercentageTimes1000) {
-            console.log(`Solver progress: ${(currentProgressPercentageTimes1000 / 10).toFixed(1)}% (${statesExplored} states explored)`);
-            lastReportedProgressPercentageTimes1000 = Math.floor(currentProgressPercentageTimes1000 / progressIncrementPercentageTimes1000) * progressIncrementPercentageTimes1000;
+        if (currentProgressPercentageTimes100000 >= lastReportedProgressPercentageTimes100000 + progressIncrementPercentageTimes100000) {
+            console.log(`Solver progress: ${(currentProgressPercentageTimes100000 / 1000).toFixed(3)}% (${statesExplored} states explored)`);
+            lastReportedProgressPercentageTimes100000 = Math.floor(currentProgressPercentageTimes100000 / progressIncrementPercentageTimes100000) * progressIncrementPercentageTimes100000;
         }
     }
 

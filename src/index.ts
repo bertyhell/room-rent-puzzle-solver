@@ -37,10 +37,13 @@ const main = () => {
   // Given the current state of validation logic (swapped neighbor rules),
   // a simple "1" might be hard to satisfy with a "valid" loop.
 
-  // Let's use the "0" which is known to be valid with no walls.
-  const inputString = "0";
-  // Or, the known valid "3 3" case from tests, but without the middle wall.
-  // const inputString = "3 3";
+  const inputString =
+      `3 _ _ 3 2 _ _ _ 3
+_ _ 3 2 _ _ _ _ _
+3 0 1 2 _ _ 1 _ 3
+0 _ _ _ 2 _ _ _ _
+2 _ 3 1 _ _ 3 2 2
+2 3 _ 2 _ 3 1 _ 2`;
 
 
   console.log("--- Slitherlink Puzzle Solver Demonstration ---");
