@@ -151,16 +151,19 @@ export function checkWallStructure(grid: Grid): { isValid: boolean; wallSegments
     let actualWallNeighbors = 0;
     let potentialNeighborCoords: Position[] = [];
 
-    if (r % 2 === 0) { // Current wall is vertical (r even, c odd - c must be odd due to isValidWallPosition)
-      potentialNeighborCoords = [
-        { r: r - 1, c: c - 1 }, { r: r + 1, c: c - 1 }, // one left one up/down
-        { r: r - 2, c: c }, { r: r + 2, c: c },         // 2 up/down
-        { r: r - 1, c: c + 1 }, { r: r + 1, c: c + 1 }  // one right one up/down
-      ];
-    } else { // Current wall is horizontal (r odd, c even - c must be even)
+    // SWAPPED LOGIC:
+    if (r % 2 === 0) { // Current wall is vertical (r even, c odd)
+      // Using logic previously for HORIZONTAL walls:
       potentialNeighborCoords = [
         { r: r - 1, c: c - 1 }, { r: r + 1, c: c - 1 }, // one left one up/down
         { r: r, c: c - 2 }, { r: r, c: c + 2 },         // 2 left/right
+        { r: r - 1, c: c + 1 }, { r: r + 1, c: c + 1 }  // one right one up/down
+      ];
+    } else { // Current wall is horizontal (r odd, c even)
+      // Using logic previously for VERTICAL walls:
+      potentialNeighborCoords = [
+        { r: r - 1, c: c - 1 }, { r: r + 1, c: c - 1 }, // one left one up/down
+        { r: r - 2, c: c }, { r: r + 2, c: c },         // 2 up/down
         { r: r - 1, c: c + 1 }, { r: r + 1, c: c + 1 }  // one right one up/down
       ];
     }
@@ -210,16 +213,19 @@ export function checkSingleLoop(grid: Grid, wallSegments: Position[]): boolean {
     let actualNeighborsOfCurrentWall: Position[] = [];
     let potentialNeighborCoords: Position[] = [];
 
+    // SWAPPED LOGIC to match checkWallStructure:
     if (r % 2 === 0) { // Current wall is vertical (r even, c odd)
-      potentialNeighborCoords = [
-        { r: r - 1, c: c - 1 }, { r: r + 1, c: c - 1 },
-        { r: r - 2, c: c }, { r: r + 2, c: c },
-        { r: r - 1, c: c + 1 }, { r: r + 1, c: c + 1 }
-      ];
-    } else { // Current wall is horizontal (r odd, c even)
+      // Using logic previously for HORIZONTAL walls (from original correct version):
       potentialNeighborCoords = [
         { r: r - 1, c: c - 1 }, { r: r + 1, c: c - 1 },
         { r: r, c: c - 2 }, { r: r, c: c + 2 },
+        { r: r - 1, c: c + 1 }, { r: r + 1, c: c + 1 }
+      ];
+    } else { // Current wall is horizontal (r odd, c even)
+      // Using logic previously for VERTICAL walls (from original correct version):
+      potentialNeighborCoords = [
+        { r: r - 1, c: c - 1 }, { r: r + 1, c: c - 1 },
+        { r: r - 2, c: c }, { r: r + 2, c: c },
         { r: r - 1, c: c + 1 }, { r: r + 1, c: c + 1 }
       ];
     }
