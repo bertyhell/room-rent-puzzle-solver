@@ -41,11 +41,10 @@ export function solvePuzzle(initialGrid: Grid): Grid | null {
   }
 
 
-  const totalPossibleStates = BigInt(2) ** BigInt(M);
+  const totalPossibleStates = BigInt(2) ** BigInt(M); // Kept for initial log message
   let statesExplored = BigInt(0);
-  // Store as progress * 100000 for 0.001% precision
-  let lastReportedProgressPercentageTimes100000 = -1;
-  const progressIncrementPercentageTimes100000 = 1; // Represents 0.001% increments (0.001 * 100000 = 1)
+  // Removed: lastReportedProgressPercentageTimes100000
+  // Removed: progressIncrementPercentageTimes100000
 
   // Create a working copy of the grid for the DFS to modify
   const workingGrid = initialGrid.clone();
@@ -53,15 +52,20 @@ export function solvePuzzle(initialGrid: Grid): Grid | null {
   function dfs(index: number): Grid | null {
     statesExplored++;
 
-    // Progress Reporting
-    if (M > 0 && totalPossibleStates > 0) {
-        // Calculate current progress scaled by 100000 (for 0.001% precision) * 100 (for percentage)
-        const currentProgressPercentageTimes100000 = Number((statesExplored * BigInt(100000) * BigInt(100)) / totalPossibleStates);
-
-        if (currentProgressPercentageTimes100000 >= lastReportedProgressPercentageTimes100000 + progressIncrementPercentageTimes100000) {
-            console.log(`Solver progress: ${(currentProgressPercentageTimes100000 / 1000).toFixed(3)}% (${statesExplored} states explored)`);
-            lastReportedProgressPercentageTimes100000 = Math.floor(currentProgressPercentageTimes100000 / progressIncrementPercentageTimes100000) * progressIncrementPercentageTimes100000;
-        }
+    // New Progress Reporting
+    if (statesExplored % BigInt(1000000) === BigInt(0) && statesExplored > BigInt(0)) {
+      console.log(`
+--- Solver Progress ---`);
+      console.log(`States explored: ${statesExplored}`);
+      // Optionally, if totalPossibleStates is still calculated and M is not excessively large for BigInt to String:
+      // if (M <= 100) { // Avoid trying to print truly massive BigInts
+      //   console.log(`Total possible states: ${totalPossibleStates.toString()}`);
+      //   const percentage = (Number(statesExplored * BigInt(10000) / totalPossibleStates) / 100).toFixed(2);
+      //   console.log(`Approximate percentage: ${percentage}%`);
+      // }
+      console.log("Current grid state in DFS:");
+      workingGrid.print(); // workingGrid is the grid being modified by dfs
+      console.log(`--- End Progress ---`);
     }
 
 
