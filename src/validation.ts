@@ -168,7 +168,12 @@ export function checkWallStructure(grid: Grid): { isValid: boolean; wallSegments
       ];
     }
 
-    for (const pn of potentialNeighborCoords) {
+    const filteredPotentialNeighborCoords = potentialNeighborCoords.filter(pn =>
+        pn.r >= 0 && pn.r < grid.rows &&
+        pn.c >= 0 && pn.c < grid.cols
+    );
+
+    for (const pn of filteredPotentialNeighborCoords) {
       // isWall checks bounds and if it's GridValue.WALL
       // isValidWallPosition is important to ensure we connect to another valid wall segment type
       if (isWall(grid, pn.r, pn.c) && isValidWallPosition(pn.r, pn.c)) {
@@ -230,7 +235,12 @@ export function checkSingleLoop(grid: Grid, wallSegments: Position[]): boolean {
       ];
     }
 
-    for (const pn of potentialNeighborCoords) {
+    const filteredPotentialNeighborCoords = potentialNeighborCoords.filter(pn =>
+        pn.r >= 0 && pn.r < grid.rows &&
+        pn.c >= 0 && pn.c < grid.cols
+    );
+
+    for (const pn of filteredPotentialNeighborCoords) {
       if (isWall(grid, pn.r, pn.c) && isValidWallPosition(pn.r, pn.c)) {
         actualNeighborsOfCurrentWall.push(pn);
       }
