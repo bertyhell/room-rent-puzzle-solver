@@ -48,21 +48,16 @@ export function solvePuzzle(initialGrid: Grid): Grid | null {
 
   // Create a working copy of the grid for the DFS to modify
   const workingGrid = initialGrid.clone();
+  const startTime = Date.now();
 
   function dfs(index: number): Grid | null {
+
     statesExplored++;
 
     // New Progress Reporting
-    if (statesExplored % BigInt(1000000) === BigInt(0) && statesExplored > BigInt(0)) {
-      console.log(`
---- Solver Progress ---`);
-      console.log(`States explored: ${statesExplored}`);
-      // Optionally, if totalPossibleStates is still calculated and M is not excessively large for BigInt to String:
-      // if (M <= 100) { // Avoid trying to print truly massive BigInts
-      //   console.log(`Total possible states: ${totalPossibleStates.toString()}`);
-      //   const percentage = (Number(statesExplored * BigInt(10000) / totalPossibleStates) / 100).toFixed(2);
-      //   console.log(`Approximate percentage: ${percentage}%`);
-      // }
+    if (statesExplored % BigInt(10_000_000) === BigInt(0) && statesExplored > BigInt(0)) {
+      console.log(`\n--- Solver Progress ---`);
+      console.log(`States explored: ${statesExplored}, time per 10 million state: ${(Date.now() - startTime) / Number(statesExplored) * 10_000_000} ms`);
       console.log("Current grid state in DFS:");
       workingGrid.print(); // workingGrid is the grid being modified by dfs
       console.log(`--- End Progress ---`);
