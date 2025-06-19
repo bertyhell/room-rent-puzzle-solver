@@ -1,8 +1,8 @@
 import { GridValue } from './enums';
 
 export class Grid {
-  private readonly rows: number;
-  private readonly cols: number;
+  public readonly rows: number;
+  public readonly cols: number;
   private grid: GridValue[][];
 
   constructor(rows: number, cols: number) {
