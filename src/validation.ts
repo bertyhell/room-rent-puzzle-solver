@@ -38,6 +38,136 @@ export function isValidWallPosition(r: number, c: number): boolean {
 }
 
 /**
+ * Helper function to get information about neighboring walls for a specific wall position,
+ * considering potential future walls in a solver context.
+ *
+ * @param grid The current grid state.
+ * @param r Row of the wall being checked.
+ * @param c Column of the wall being checked.
+ * @param potentialWallPositions Full list of positions where walls could be placed.
+ * @param currentIndex Index of the wall *just placed* in the `potentialWallPositions` array.
+ * @returns An object { actualWallNeighbors: number, undecidedPotentialNeighbors: number }.
+ */
+export function getWallNeighborsInfo(
+  grid: Grid,
+  r: number,
+  c: number,
+  potentialWallPositions: Position[],
+  currentIndex: number
+): { actualWallNeighbors: number; undecidedPotentialNeighbors: number } {
+  let actualWallNeighbors = 0;
+  let undecidedPotentialNeighbors = 0;
+
+  const futurePotentialWallsSet = new Set<string>();
+  for (let i = currentIndex + 1; i < potentialWallPositions.length; i++) {
+    const pos = potentialWallPositions[i];
+    futurePotentialWallsSet.add(`${pos.r},${pos.c}`);
+  }
+
+  let potentialNeighborCoords: Position[] = [];
+
+  // Determine potential neighbor coordinates based on wall orientation
+  // This logic is similar to the "SWAPPED LOGIC" in checkWallStructure/checkSingleLoop
+  if (r % 2 === 0) { // Current wall is vertical (r even, c odd)
+    potentialNeighborCoords = [
+      { r: r, c: c - 2 },       // left
+      { r: r, c: c + 2 },       // right
+      { r: r - 1, c: c - 1 }, // top-left diag
+      { r: r - 1, c: c + 1 }, // top-right diag
+      { r: r + 1, c: c - 1 }, // bottom-left diag
+      { r: r + 1, c: c + 1 }, // bottom-right diag
+    ];
+  } else { // Current wall is horizontal (r odd, c even)
+    potentialNeighborCoords = [
+      { r: r - 2, c: c },       // up
+      { r: r + 2, c: c },       // down
+      { r: r - 1, c: c - 1 }, // top-left diag
+      { r: r + 1, c: c - 1 }, // bottom-left diag
+      { r: r - 1, c: c + 1 }, // top-right diag
+      { r: r + 1, c: c + 1 }, // bottom-right diag
+    ];
+  }
+
+  for (const pnCoord of potentialNeighborCoords) {
+    const { r: pn_r, c: pn_c } = pnCoord;
+
+    // Check if the potential neighbor is within grid boundaries
+    if (pn_r < 0 || pn_r >= grid.rows || pn_c < 0 || pn_c >= grid.cols) {
+      continue;
+    }
+
+    // Check if it's a valid position for a wall
+    if (!isValidWallPosition(pn_r, pn_c)) {
+      continue;
+    }
+
+    if (isWall(grid, pn_r, pn_c)) {
+      actualWallNeighbors++;
+    } else {
+      // It's not an existing wall, check if it's an undecided potential wall
+      const key = `${pn_r},${pn_c}`;
+      if (futurePotentialWallsSet.has(key)) {
+        undecidedPotentialNeighbors++;
+      }
+    }
+  }
+
+  return { actualWallNeighbors, undecidedPotentialNeighbors };
+}
+
+/**
+ * Checks for problematic wall connections based on the current grid state and potential future walls.
+ * This function is intended for use during a DFS/solver process.
+ *
+ * @param grid The current grid state.
+ * @param potentialWallPositions Full list of positions where walls could be placed.
+ * @param currentIndex Index of the wall *just placed* in the `potentialWallPositions` array.
+ * @returns True if a problematic wall connection is found, false otherwise.
+ */
+export function hasProblematicWallConnections(
+  grid: Grid,
+  potentialWallPositions: Position[],
+  currentIndex: number
+): boolean {
+  for (let r = 0; r < grid.rows; r++) {
+    for (let c = 0; c < grid.cols; c++) {
+      if (grid.get(r, c) === GridValue.WALL) {
+        // This wall already exists on the grid.
+        // We need to check its connections.
+        const { actualWallNeighbors, undecidedPotentialNeighbors } = getWallNeighborsInfo(
+          grid,
+          r,
+          c,
+          potentialWallPositions,
+          currentIndex
+        );
+
+        // Condition 1: Too many actual neighbors
+        // A wall segment should not have more than 2 neighbors.
+        if (actualWallNeighbors > 2) {
+          // console.log(`Problem: Wall at [${r},${c}] has ${actualWallNeighbors} actual neighbors.`);
+          return true;
+        }
+
+        // Condition 2: All potential neighbors are decided, but the wall count is not 2.
+        // If there are no more undecided neighbors that could connect to this wall,
+        // then the current number of actual neighbors must be exactly 2 (or 0 if it's an isolated segment
+        // that will be removed - but the problem asks for !=2, which covers 0 and 1).
+        // However, for a valid continuous loop, each segment must have 2.
+        // If undecidedPotentialNeighbors is 0, it means the fate of all connecting spots is known.
+        if (undecidedPotentialNeighbors === 0 && actualWallNeighbors !== 2) {
+          // console.log(`Problem: Wall at [${r},${c}] has ${actualWallNeighbors} actual neighbors and 0 undecided potential neighbors.`);
+          return true;
+        }
+      }
+    }
+  }
+
+  // No problematic connections found for any existing wall on the grid
+  return false;
+}
+
+/**
  * Checks if all number clues (0-3) on the grid are satisfied.
  * A number clue at grid[r][c] is satisfied if the count of actual walls
  * adjacent (top, bottom, left, right) to it equals the number itself.
