@@ -4,7 +4,7 @@
   "description": "brute force room rent puzzle solver",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "bun test",
     "build": "tsc",
     "start": "bun --bun src/index.ts",
     "start:watch": "bun --bun --watch src/index.ts",
