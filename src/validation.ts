@@ -318,3 +318,55 @@ export function isValidSolution(grid: Grid): boolean {
   // console.log("isValidSolution: All checks passed. Valid solution.");
   return true;
 }
+
+/**
+ * Checks if the current grid configuration has any data cells with more walls
+ * than specified by their number clue. This is a fast check for pruning DFS branches.
+ * It does NOT check for too few walls, as those might be added later.
+ * @param grid The grid to check.
+ * @returns True if a pruning condition (too many walls for a clue) is met, false otherwise.
+ */
+export function isPruningCandidate(grid: Grid): boolean {
+  for (let r = 0; r < grid.rows; r++) {
+    for (let c = 0; c < grid.cols; c++) {
+      if (isDataCell(r, c)) {
+        const cellValue = grid.get(r, c);
+        let expectedWalls = -1; // Default for non-clue cells or if logic changes
+
+        switch (cellValue) {
+          case GridValue.ZERO:
+            expectedWalls = 0;
+            break;
+          case GridValue.ONE:
+            expectedWalls = 1;
+            break;
+          case GridValue.TWO:
+            expectedWalls = 2;
+            break;
+          case GridValue.THREE:
+            expectedWalls = 3;
+            break;
+          default:
+            // Not a number clue cell, skip specific wall count checks for this cell
+            continue;
+        }
+
+        let actualWalls = 0;
+        // Check Top
+        if (isWall(grid, r - 1, c)) actualWalls++;
+        // Check Bottom
+        if (isWall(grid, r + 1, c)) actualWalls++;
+        // Check Left
+        if (isWall(grid, r, c - 1)) actualWalls++;
+        // Check Right
+        if (isWall(grid, r, c + 1)) actualWalls++;
+
+        if (actualWalls > expectedWalls) {
+          // console.log(`Pruning candidate: Cell (${r},${c}) is ${cellValue} but has ${actualWalls} walls.`);
+          return true; // Too many walls for this clue, prune this path
+        }
+      }
+    }
+  }
+  return false; // No definitive violation found that warrants pruning
+}

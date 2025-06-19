@@ -1,6 +1,6 @@
 import { Grid } from './grid';
 import { GridValue } from './enums';
-import { isValidSolution, checkNumberConstraints } from './validation';
+import { isValidSolution, isPruningCandidate } from './validation';
 import type { Position } from './validation';
 
 // Helper function to get all potential wall positions in row-by-row order
@@ -77,9 +77,8 @@ export function solvePuzzle(initialGrid: Grid): Grid | null {
 
     // Option 1: Try placing a WALL
     workingGrid.set(pos.r, pos.c, GridValue.WALL);
-    // Pruning: Only proceed if number constraints are still met (or could be met)
-    // checkNumberConstraints is relatively fast.
-    if (checkNumberConstraints(workingGrid)) {
+    // Pruning: Only proceed if this placement doesn't immediately violate "too many walls".
+    if (!isPruningCandidate(workingGrid)) {
       const solution = dfs(index + 1);
       if (solution) {
         return solution;
@@ -89,7 +88,14 @@ export function solvePuzzle(initialGrid: Grid): Grid | null {
     // Option 2: Backtrack and try BLANK
     workingGrid.set(pos.r, pos.c, GridValue.BLANK);
     // Re-check constraints for the BLANK state.
-    if (checkNumberConstraints(workingGrid)) {
+    // If setting to BLANK causes a "too many walls" issue (e.g. if a '0' needs no walls, this is fine)
+    // or more subtly, if a '1' *needed* this wall, and now has 0, that's not what isPruningCandidate checks.
+    // isPruningCandidate only checks for *too many* walls.
+    // So, for the BLANK case, it's generally safe to proceed unless it somehow creates a "too many walls" scenario,
+    // which is unlikely by removing a wall.
+    // The original checkNumberConstraints was more thorough here.
+    // However, if we stick to only isPruningCandidate for early exit:
+    if (!isPruningCandidate(workingGrid)) { // This check might be redundant here or less effective for BLANK
       const solution = dfs(index + 1);
       if (solution) {
         return solution;
