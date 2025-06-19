@@ -146,89 +146,38 @@ export function checkWallStructure(grid: Grid): { isValid: boolean; wallSegments
   }
 
   // Second pass: check neighbor count for each wall segment.
-  // Each wall segment must connect to exactly two other wall segments.
-  // These connections happen at "dot" cells (even row, even col).
   for (const wallPos of wallSegments) {
-    let actualWallNeighbors = 0;
     const { r, c } = wallPos;
+    let actualWallNeighbors = 0;
+    let potentialNeighborCoords: Position[] = [];
 
-    // Potential connection points (dots) and other wall segments from those dots.
-    let connectedDotPoints: Position[] = [];
-    if (r % 2 !== 0) { // Current wall is horizontal (r odd, c even)
-      // Dots are to its left and right
-      connectedDotPoints = [{ r: r, c: c - 1 }, { r: r, c: c + 1 }];
-    } else { // Current wall is vertical (r even, c odd)
-      // Dots are above and below it
-      connectedDotPoints = [{ r: r - 1, c: c }, { r: r + 1, c: c }];
+    if (r % 2 === 0) { // Current wall is vertical (r even, c odd - c must be odd due to isValidWallPosition)
+      potentialNeighborCoords = [
+        { r: r - 1, c: c - 1 }, { r: r + 1, c: c - 1 }, // one left one up/down
+        { r: r - 2, c: c }, { r: r + 2, c: c },         // 2 up/down
+        { r: r - 1, c: c + 1 }, { r: r + 1, c: c + 1 }  // one right one up/down
+      ];
+    } else { // Current wall is horizontal (r odd, c even - c must be even)
+      potentialNeighborCoords = [
+        { r: r - 1, c: c - 1 }, { r: r + 1, c: c - 1 }, // one left one up/down
+        { r: r, c: c - 2 }, { r: r, c: c + 2 },         // 2 left/right
+        { r: r - 1, c: c + 1 }, { r: r + 1, c: c + 1 }  // one right one up/down
+      ];
     }
 
-    for (const dot of connectedDotPoints) {
-        // From each dot, look for other walls.
-        // A dot is at (dot_r, dot_c) - both even.
-        // Potential walls connected to this dot are:
-        // (dot_r, dot_c-1) - horizontal left
-        // (dot_r, dot_c+1) - horizontal right
-        // (dot_r-1, dot_c) - vertical up
-        // (dot_r+1, dot_c) - vertical down
-        const potentialWallNeighborsFromDot: Position[] = [
-            { r: dot.r, c: dot.c - 1 }, { r: dot.r, c: dot.c + 1 },
-            { r: dot.r - 1, c: dot.c }, { r: dot.r + 1, c: dot.c },
-        ];
-
-        for (const pwn of potentialWallNeighborsFromDot) {
-            // Check if this potential neighbor is:
-            // 1. Within grid bounds
-            // 2. A valid wall position itself
-            // 3. Actually a wall
-            // 4. Not the current wall segment we are checking (wallPos)
-            if (pwn.r === r && pwn.c === c) continue; // Skip self
-
-            if (isWall(grid, pwn.r, pwn.c)) { // isWall includes bounds & valid position check implicitly by its nature
-                                             // and isValidWallPosition was checked in first pass for all walls
-                actualWallNeighbors++;
-            }
-        }
+    for (const pn of potentialNeighborCoords) {
+      // isWall checks bounds and if it's GridValue.WALL
+      // isValidWallPosition is important to ensure we connect to another valid wall segment type
+      if (isWall(grid, pn.r, pn.c) && isValidWallPosition(pn.r, pn.c)) {
+        actualWallNeighbors++;
+      }
     }
 
-
-    // The logic for counting neighbors was too broad. A wall segment should have exactly two other wall segments
-    // connected to its ENDS.
-    // Let's simplify: a wall segment (r,c) connects to a "dot" cell.
-    // From that "dot" cell, there should be other wall segments.
-    // Each wall segment has two "ends" (which are "dot" cells).
-    // Each of these "dot" cells must have exactly one *other* wall segment connected to it,
-    // besides the wall segment itself.
-
-    let endsWithCorrectConnections = 0;
-    for (const dot of connectedDotPoints) { // Iterate the two dot cells at the ends of wallPos
-        let otherWallsAtThisDot = 0;
-        const potentialWallsFromThisDot: Position[] = [
-            { r: dot.r, c: dot.c - 1 }, { r: dot.r, c: dot.c + 1 }, // Horizontal walls from dot
-            { r: dot.r - 1, c: dot.c }, { r: dot.r + 1, c: dot.c }, // Vertical walls from dot
-        ];
-        for (const pWall of potentialWallsFromThisDot) {
-            if (pWall.r === r && pWall.c === c) continue; // Don't count the wall segment itself
-
-            if (isWall(grid, pWall.r, pWall.c)) {
-                 otherWallsAtThisDot++;
-            }
-        }
-        // Each "dot" at the end of a wall segment should connect to exactly one *other* wall segment
-        // to form a continuous line (or a T-junction/cross if those were allowed, but problem implies simple loops)
-        // For a simple loop, each dot that is an endpoint of a wall segment must have exactly one other wall segment connected to it.
-        // If a dot has 0 other walls, it's a dead end. If >1, it's a branch/crossing.
-        if (otherWallsAtThisDot === 1) {
-            endsWithCorrectConnections++;
-        }
-    }
-
-    // Each wall segment must have two ends, and each end must be properly connected.
-    if (endsWithCorrectConnections !== 2) {
-    //   console.log(`Wall at [${r},${c}] has ${endsWithCorrectConnections} correctly connected ends (expected 2).`);
+    if (actualWallNeighbors !== 2) {
+      // console.log(`Wall at [${r},${c}] has ${actualWallNeighbors} neighbors, expected 2.`);
       return { isValid: false, wallSegments: [] };
     }
   }
-
   // All checks passed
   return { isValid: true, wallSegments };
 }
@@ -258,54 +207,31 @@ export function checkSingleLoop(grid: Grid, wallSegments: Position[]): boolean {
     segmentsVisitedCount++;
     const { r, c } = currentWall;
 
-    const neighborsOfCurrentWall: Position[] = [];
+    let actualNeighborsOfCurrentWall: Position[] = [];
+    let potentialNeighborCoords: Position[] = [];
 
-    // Determine the two "dot" cells connected to the currentWall
-    let dotCells: Position[] = [];
-    if (r % 2 !== 0) { // Horizontal wall (r odd, c even)
-      dotCells = [{ r: r, c: c - 1 }, { r: r, c: c + 1 }];
-    } else { // Vertical wall (r even, c odd)
-      dotCells = [{ r: r - 1, c: c }, { r: r + 1, c: c }];
+    if (r % 2 === 0) { // Current wall is vertical (r even, c odd)
+      potentialNeighborCoords = [
+        { r: r - 1, c: c - 1 }, { r: r + 1, c: c - 1 },
+        { r: r - 2, c: c }, { r: r + 2, c: c },
+        { r: r - 1, c: c + 1 }, { r: r + 1, c: c + 1 }
+      ];
+    } else { // Current wall is horizontal (r odd, c even)
+      potentialNeighborCoords = [
+        { r: r - 1, c: c - 1 }, { r: r + 1, c: c - 1 },
+        { r: r, c: c - 2 }, { r: r, c: c + 2 },
+        { r: r - 1, c: c + 1 }, { r: r + 1, c: c + 1 }
+      ];
     }
 
-    // For each dot cell, find the other wall connected to it (which is not currentWall)
-    for (const dot of dotCells) {
-      // Potential walls connected to this dot are:
-      const potentialWallNeighborsFromDot: Position[] = [
-        { r: dot.r, c: dot.c - 1 }, { r: dot.r, c: dot.c + 1 }, // Horizontals from dot
-        { r: dot.r - 1, c: dot.c }, { r: dot.r + 1, c: dot.c }, // Verticals from dot
-      ];
-
-      for (const pWall of potentialWallNeighborsFromDot) {
-        // Must be a wall, must be a valid wall position, and NOT be the currentWall itself
-        if ((pWall.r === r && pWall.c === c)) {
-          continue; // Skip currentWall
-        }
-
-        // Check if this potential wall is actually a wall in the grid
-        // This relies on isWall to confirm it's a GridValue.WALL and within bounds.
-        // And it must be part of the pre-validated wallSegments list.
-        // A direct check against wallSegments array is slow.
-        // However, since checkWallStructure passed, isWall(grid, pWall.r, pWall.c) should be sufficient.
-        if (isWall(grid, pWall.r, pWall.c)) {
-          // Ensure it's a wall known from the input `wallSegments` for safety,
-          // though `isWall` should align if `wallSegments` was derived from `grid`.
-          // For BFS, we only care about *actual* connections.
-          // `checkWallStructure` already confirmed these connections are valid (one other wall per dot).
-          neighborsOfCurrentWall.push(pWall);
-        }
+    for (const pn of potentialNeighborCoords) {
+      if (isWall(grid, pn.r, pn.c) && isValidWallPosition(pn.r, pn.c)) {
+        actualNeighborsOfCurrentWall.push(pn);
       }
     }
 
-    // `checkWallStructure` ensures exactly two neighbors (one from each dot).
-    // So, `neighborsOfCurrentWall` should ideally contain two unique wall segments.
-    // We might get duplicates if a neighbor is reachable from both dots (not possible for simple lines).
-
-    const uniqueNeighbors = Array.from(new Set(neighborsOfCurrentWall.map(n => `${n.r},${n.c}`)))
-                            .map(s => { const [nr, nc] = s.split(',').map(Number); return {r: nr, c: nc}; });
-
-
-    for (const neighbor of uniqueNeighbors) {
+    // The checkWallStructure already ensures actualNeighborsOfCurrentWall will have exactly 2 items.
+    for (const neighbor of actualNeighborsOfCurrentWall) {
       const neighborKey = `${neighbor.r},${neighbor.c}`;
       if (!visited.has(neighborKey)) {
         visited.add(neighborKey);
