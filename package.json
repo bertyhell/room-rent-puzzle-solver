@@ -24,6 +24,8 @@
   "homepage": "https://github.com/bertyhell/room-rent-puzzle-solver#readme",
   "devDependencies": {
     "@types/node": "^24.0.3",
-    "typescript": "^5.8.3"
-  }
+    "typescript": "^5.8.3",
+    "@types/bun": "latest"
+  },
+  "private": true
 }
