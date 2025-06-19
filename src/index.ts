@@ -126,6 +126,37 @@ _ _ 3 2 _ _ _ _ _
     // --- Scenario 5: A more complex valid case from example (manual) ---
     // This would involve correctly placing all walls for the initial large inputString.
     // That's too complex for manual setup here. The prior tests cover specific rule violations.
+
+    // --- Scenario 5: Two adjacent '3's with a surrounding valid loop ---
+    console.log("\n\n--- Scenario 5: Two adjacent '3's with a surrounding valid loop ---");
+    const inputStringScenario5 = "3 3"; // Data cells are (0,0) and (0,1) in input string terms
+                                      // Mapped to grid: G[1][1] (value 3) and G[1][3] (value 3)
+    let gridScenario5 = Grid.fromString(inputStringScenario5);
+    console.log("Initial grid for Scenario 5 (from '3 3'):");
+    gridScenario5.print();
+
+    // G[1][1] (value 3) needs 3 walls.
+    // G[1][3] (value 3) needs 3 walls.
+    // Shared wall: (1,2)
+
+    // Walls for G[1][1]: (0,1)T, (2,1)B, (1,0)L. (Shared (1,2)R)
+    // Walls for G[1][3]: (0,3)T, (2,3)B, (1,4)R. (Shared (1,2)L)
+
+    // Outer boundary walls:
+    gridScenario5.set(0, 1, GridValue.WALL); // Top for G[1][1]
+    gridScenario5.set(0, 3, GridValue.WALL); // Top for G[1][3]
+    gridScenario5.set(2, 1, GridValue.WALL); // Bottom for G[1][1]
+    gridScenario5.set(2, 3, GridValue.WALL); // Bottom for G[1][3]
+    gridScenario5.set(1, 0, GridValue.WALL); // Left for G[1][1]
+    gridScenario5.set(1, 4, GridValue.WALL); // Right for G[1][3]
+
+    // Shared inner wall
+    gridScenario5.set(1, 2, GridValue.WALL); // Shared: Right for G[1][1], Left for G[1][3]
+
+    console.log("\nGrid for Scenario 5 with walls set:");
+    gridScenario5.print();
+    console.log("Scenario 5 - Is valid:", isValidSolution(gridScenario5)); // Expected: true
+
     console.log("\n--- End of Test Scenarios ---");
 
 
