@@ -150,12 +150,12 @@ _ _ 3 2 _ _ _ _ _
     gridScenario5.set(1, 0, GridValue.WALL); // Left for G[1][1]
     gridScenario5.set(1, 4, GridValue.WALL); // Right for G[1][3]
 
-    // Shared inner wall
-    gridScenario5.set(1, 2, GridValue.WALL); // Shared: Right for G[1][1], Left for G[1][3]
+    // Shared inner wall gridScenario5.set(1, 2, GridValue.BLANK); // Ensure NO wall between G[1][1] and G[1][3]
+    // Since the grid is initialized with BLANK, we just don't set (1,2) to WALL.
 
-    console.log("\nGrid for Scenario 5 with walls set:");
+    console.log("\nGrid for Scenario 5 with walls set (no middle wall):");
     gridScenario5.print();
-    console.log("Scenario 5 - Is valid:", isValidSolution(gridScenario5)); // Expected: true
+    console.log("Scenario 5 - Is valid:", isValidSolution(gridScenario5)); // Expected: true, as each '3' should now have 3 walls.
 
     console.log("\n--- End of Test Scenarios ---");
 
