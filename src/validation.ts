@@ -168,6 +168,143 @@ export function hasProblematicWallConnections(
 }
 
 /**
+ * Helper function to get information about walls surrounding a digit cell,
+ * considering potential future walls in a solver context.
+ *
+ * @param grid The current grid state.
+ * @param r Row of the digit cell.
+ * @param c Column of the digit cell.
+ * @param potentialWallPositions Full list of positions where walls could be placed.
+ * @param currentIndex Index of the wall *just placed* in the `potentialWallPositions` array.
+ * @returns An object { actualWalls: number, undecidedPotentialWalls: number, expectedWalls: number }.
+ */
+export function getDigitWallInfo(
+  grid: Grid,
+  r: number,
+  c: number,
+  potentialWallPositions: Position[],
+  currentIndex: number
+): { actualWalls: number; undecidedPotentialWalls: number; expectedWalls: number } {
+  let expectedWalls = -1;
+  const cellValue = grid.get(r, c);
+
+  switch (cellValue) {
+    case GridValue.ZERO:
+      expectedWalls = 0;
+      break;
+    case GridValue.ONE:
+      expectedWalls = 1;
+      break;
+    case GridValue.TWO:
+      expectedWalls = 2;
+      break;
+    case GridValue.THREE:
+      expectedWalls = 3;
+      break;
+    default:
+      // Not a digit cell relevant for this check (e.g., BLANK or WALL)
+      // This function should ideally only be called for actual data cells that are digits.
+      // However, if called on other cells, expectedWalls = -1 will indicate this.
+      break;
+  }
+
+  let actualWalls = 0;
+  let undecidedPotentialWalls = 0;
+
+  const futurePotentialWallsSet = new Set<string>();
+  for (let i = currentIndex + 1; i < potentialWallPositions.length; i++) {
+    const pos = potentialWallPositions[i];
+    futurePotentialWallsSet.add(`${pos.r},${pos.c}`);
+  }
+
+  const adjacentWallPositions: Position[] = [
+    { r: r - 1, c: c }, // Top
+    { r: r + 1, c: c }, // Bottom
+    { r: r, c: c - 1 }, // Left
+    { r: r, c: c + 1 }, // Right
+  ];
+
+  for (const wp of adjacentWallPositions) {
+    // Check if the potential wall position is within grid boundaries
+    if (wp.r < 0 || wp.r >= grid.rows || wp.c < 0 || wp.c >= grid.cols) {
+      continue;
+    }
+
+    // Check if it's a valid position for a wall segment
+    // This is crucial because corners of data cells (e.g., r-1, c-1 from data cell r,c) are not valid wall positions.
+    // The adjacentWallPositions are by definition valid *if they are not outside the grid*.
+    // isValidWallPosition is more for general positions, here we know they are structurally valid candidates.
+    // However, it doesn't hurt to double check, especially if grid dimensions are very small.
+    // For a data cell (odd,odd), its neighbors (even,odd) or (odd,even) are always valid wall positions.
+    // So, isValidWallPosition(wp.r, wp.c) should always be true if within bounds.
+    // Let's keep it for robustness, though it might be slightly redundant here given how wp is constructed.
+
+    if (!isValidWallPosition(wp.r, wp.c)) { // This check might be redundant but safe
+        continue;
+    }
+
+    if (isWall(grid, wp.r, wp.c)) {
+      actualWalls++;
+    } else {
+      const key = `${wp.r},${wp.c}`;
+      if (futurePotentialWallsSet.has(key)) {
+        undecidedPotentialWalls++;
+      }
+    }
+  }
+
+  return { actualWalls, undecidedPotentialWalls, expectedWalls };
+}
+
+/**
+ * Checks if any number clue on the grid is "incorrectly satisfied" in a way
+ * that makes the current path invalid during a DFS solve.
+ * An incorrectly satisfied number is one where all surrounding potential wall
+ * positions have been decided (either WALL or BLANK), but the number of
+ * actual walls does not match the number clue.
+ *
+ * @param grid The current grid state.
+ * @param potentialWallPositions Full list of positions where walls could be placed.
+ * @param currentIndex Index of the wall *just placed* in the `potentialWallPositions` array.
+ * @returns True if such a condition is met (indicating a path to prune), false otherwise.
+ */
+export function hasIncorrectlySatisfiedNumbers(
+  grid: Grid,
+  potentialWallPositions: Position[],
+  currentIndex: number
+): boolean {
+  for (let r = 0; r < grid.rows; r++) {
+    for (let c = 0; c < grid.cols; c++) {
+      if (isDataCell(r, c)) {
+        const { actualWalls, undecidedPotentialWalls, expectedWalls } = getDigitWallInfo(
+          grid,
+          r,
+          c,
+          potentialWallPositions,
+          currentIndex
+        );
+
+        // If expectedWalls is -1, it's not a 0-3 digit cell, so skip.
+        if (expectedWalls === -1) {
+          continue;
+        }
+
+        // Pruning condition:
+        // If all potential walls around this digit are decided (undecidedPotentialWalls === 0)
+        // AND the number of actual walls does not match the digit's requirement,
+        // then this path is invalid.
+        if (undecidedPotentialWalls === 0 && actualWalls !== expectedWalls) {
+          // console.log(`Incorrectly satisfied number at [${r},${c}]: Expected ${expectedWalls}, Got ${actualWalls}, No undecided.`);
+          return true;
+        }
+      }
+    }
+  }
+  return false; // No such incorrectly satisfied numbers found
+}
+
+
+/**
  * Checks if all number clues (0-3) on the grid are satisfied.
  * A number clue at grid[r][c] is satisfied if the count of actual walls
  * adjacent (top, bottom, left, right) to it equals the number itself.

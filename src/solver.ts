@@ -1,6 +1,6 @@
 import { Grid } from './grid';
 import { GridValue } from './enums';
-import { isValidSolution, isPruningCandidate, hasProblematicWallConnections } from './validation';
+import { isValidSolution, isPruningCandidate, hasProblematicWallConnections, hasIncorrectlySatisfiedNumbers } from './validation';
 import type { Position } from './validation';
 
 // Helper function to get all potential wall positions in row-by-row order
@@ -75,8 +75,10 @@ export function solvePuzzle(initialGrid: Grid): Grid | null {
 
     // Option 1: Try placing a WALL
     workingGrid.set(pos.r, pos.c, GridValue.WALL);
-    // Pruning: Check existing and new wall connection constraints
-    if (!isPruningCandidate(workingGrid) && !hasProblematicWallConnections(workingGrid, potentialWallPositions, index)) {
+    // Pruning: Check existing and new wall connection constraints, and number satisfaction
+    if (!isPruningCandidate(workingGrid) &&
+        !hasProblematicWallConnections(workingGrid, potentialWallPositions, index) &&
+        !hasIncorrectlySatisfiedNumbers(workingGrid, potentialWallPositions, index)) {
       const solution = dfs(index + 1);
       if (solution) {
         return solution;
