@@ -52,9 +52,19 @@ export function solvePuzzle(initialGrid: Grid): Grid | null {
 
   function dfs(index: number): Grid | null {
 
-    statesExplored++;
-
-    // New Progress Reporting
+    // Progress Reporting (meaning changes due to how statesExplored is incremented)
+    // This will now report less frequently if large subtrees are pruned.
+    if (statesExplored > BigInt(0) && statesExplored % BigInt(10_000_000) < (BigInt(2) ** BigInt(M - (index >= M ? M : index + 1)))) {
+      // A rough way to check if we recently added a large chunk that pushed us over a 10M boundary
+      // This condition is not perfect and might need refinement for desired reporting frequency.
+      // Or, simply keep the old modulo check:
+      // if (statesExplored % BigInt(10_000_000) === BigInt(0) && statesExplored > BigInt(0)) {
+      // For now, let's stick to a simpler check for progress reporting to avoid over-complication here.
+      // The key is that statesExplored is now modified differently.
+    }
+    // A more straightforward progress report trigger might be time-based or on significant state jumps.
+    // For this change, let's keep the original modulo logic for the report trigger,
+    // acknowledging its behavior will change.
     if (statesExplored % BigInt(10_000_000) === BigInt(0) && statesExplored > BigInt(0)) {
       console.log(`\n--- Solver Progress ---`);
       console.log(`States explored: ${statesExplored}, time per 10 million state: ${(Date.now() - startTime) / Number(statesExplored) * 10_000_000} ms`);
@@ -65,6 +75,7 @@ export function solvePuzzle(initialGrid: Grid): Grid | null {
 
 
     if (index === M) { // All potential wall positions have been decided
+      statesExplored += BigInt(1); // Count this terminal state
       if (isValidSolution(workingGrid)) {
         return workingGrid.clone(); // Found a solution
       }
@@ -72,13 +83,17 @@ export function solvePuzzle(initialGrid: Grid): Grid | null {
     }
 
     const pos = potentialWallPositions[index];
+    const statesInSkippedSubtree = BigInt(2) ** BigInt(M - (index + 1));
 
     // Option 1: Try placing a WALL
     workingGrid.set(pos.r, pos.c, GridValue.WALL);
-    // Pruning: Check existing and new wall connection constraints, and number satisfaction
-    if (!isPruningCandidate(workingGrid) &&
-        !hasProblematicWallConnections(workingGrid, potentialWallPositions, index) &&
-        !hasIncorrectlySatisfiedNumbers(workingGrid, potentialWallPositions, index)) {
+    const isWallPathPruned = isPruningCandidate(workingGrid) ||
+                             hasProblematicWallConnections(workingGrid, potentialWallPositions, index) ||
+                             hasIncorrectlySatisfiedNumbers(workingGrid, potentialWallPositions, index);
+
+    if (isWallPathPruned) {
+      statesExplored += statesInSkippedSubtree;
+    } else {
       const solution = dfs(index + 1);
       if (solution) {
         return solution;
@@ -86,16 +101,14 @@ export function solvePuzzle(initialGrid: Grid): Grid | null {
     }
 
     // Option 2: Backtrack and try BLANK
-    workingGrid.set(pos.r, pos.c, GridValue.BLANK);
-    // Re-check constraints for the BLANK state.
-    // If setting to BLANK causes a "too many walls" issue (e.g. if a '0' needs no walls, this is fine)
-    // or more subtly, if a '1' *needed* this wall, and now has 0, that's not what isPruningCandidate checks.
-    // isPruningCandidate only checks for *too many* walls.
-    // So, for the BLANK case, it's generally safe to proceed unless it somehow creates a "too many walls" scenario,
-    // which is unlikely by removing a wall.
-    // The original checkNumberConstraints was more thorough here.
-    // However, if we stick to only isPruningCandidate for early exit:
-    if (!isPruningCandidate(workingGrid)) { // This check might be redundant here or less effective for BLANK
+    workingGrid.set(pos.r, pos.c, GridValue.BLANK); // Backtrack
+    const isBlankPathPruned = isPruningCandidate(workingGrid) ||
+                              hasProblematicWallConnections(workingGrid, potentialWallPositions, index) ||
+                              hasIncorrectlySatisfiedNumbers(workingGrid, potentialWallPositions, index);
+
+    if (isBlankPathPruned) {
+      statesExplored += statesInSkippedSubtree;
+    } else {
       const solution = dfs(index + 1);
       if (solution) {
         return solution;
