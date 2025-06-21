@@ -46,36 +46,45 @@ export function solvePuzzle(initialGrid: Grid): Grid | null {
   // Removed: lastReportedProgressPercentageTimes100000
   // Removed: progressIncrementPercentageTimes100000
 
+  const reportingDenominator = BigInt(1_000_000); // For 0.0001% increments
+  let nextReportNumerator = BigInt(1);
+
   // Create a working copy of the grid for the DFS to modify
   const workingGrid = initialGrid.clone();
   const startTime = Date.now();
 
   function dfs(index: number): Grid | null {
 
-    // Progress Reporting (meaning changes due to how statesExplored is incremented)
-    // This will now report less frequently if large subtrees are pruned.
-    if (statesExplored > BigInt(0) && statesExplored % BigInt(10_000_000) < (BigInt(2) ** BigInt(M - (index >= M ? M : index + 1)))) {
-      // A rough way to check if we recently added a large chunk that pushed us over a 10M boundary
-      // This condition is not perfect and might need refinement for desired reporting frequency.
-      // Or, simply keep the old modulo check:
-      // if (statesExplored % BigInt(10_000_000) === BigInt(0) && statesExplored > BigInt(0)) {
-      // For now, let's stick to a simpler check for progress reporting to avoid over-complication here.
-      // The key is that statesExplored is now modified differently.
-    }
-    // A more straightforward progress report trigger might be time-based or on significant state jumps.
-    // For this change, let's keep the original modulo logic for the report trigger,
-    // acknowledging its behavior will change.
-    if (statesExplored % BigInt(10_000_000) === BigInt(0) && statesExplored > BigInt(0)) {
-      console.log(`\n--- Solver Progress ---`);
-      console.log(`States explored: ${statesExplored}, time per 10 million state: ${(Date.now() - startTime) / Number(statesExplored) * 10_000_000} ms`);
-      console.log("Current grid state in DFS:");
-      workingGrid.print(); // workingGrid is the grid being modified by dfs
-      console.log(`--- End Progress ---`);
-    }
+    const checkAndReportProgress = () => {
+      // totalPossibleStates is from solvePuzzle scope. M is also from solvePuzzle scope.
+      // reportingDenominator and nextReportNumerator are from solvePuzzle scope and modifiable.
+      while (nextReportNumerator <= reportingDenominator &&
+             statesExplored * reportingDenominator >= nextReportNumerator * totalPossibleStates) {
 
+          const percentage = (Number(nextReportNumerator) / Number(reportingDenominator)) * 100;
+
+          console.log(`\n--- Solver Progress ---`);
+          console.log(`States explored: ${statesExplored} / ${totalPossibleStates} (approx. ${percentage.toFixed(4)}%)`);
+
+          let timePerMillionString = "N/A";
+          if (statesExplored > BigInt(0)) {
+              const exploredNum = Number(statesExplored);
+              if (exploredNum > 0) { // Ensure exploredNum is positive to avoid division by zero or skewed results
+                  timePerMillionString = `${((Date.now() - startTime) * 1_000_000) / exploredNum} ms`;
+              }
+          }
+          console.log(`Time per 1M effective states: ${timePerMillionString}`);
+          console.log("Current grid state (at report time, may not be a valid partial solution):");
+          workingGrid.print();
+          console.log(`--- End Progress ---`);
+
+          nextReportNumerator++;
+      }
+    };
 
     if (index === M) { // All potential wall positions have been decided
       statesExplored += BigInt(1); // Count this terminal state
+      checkAndReportProgress();
       if (isValidSolution(workingGrid)) {
         return workingGrid.clone(); // Found a solution
       }
@@ -93,8 +102,10 @@ export function solvePuzzle(initialGrid: Grid): Grid | null {
 
     if (isWallPathPruned) {
       statesExplored += statesInSkippedSubtree;
+      checkAndReportProgress();
     } else {
       const solution = dfs(index + 1);
+      checkAndReportProgress(); // Report after recursive call unwinds
       if (solution) {
         return solution;
       }
@@ -108,8 +119,10 @@ export function solvePuzzle(initialGrid: Grid): Grid | null {
 
     if (isBlankPathPruned) {
       statesExplored += statesInSkippedSubtree;
+      checkAndReportProgress();
     } else {
       const solution = dfs(index + 1);
+      checkAndReportProgress(); // Report after recursive call unwinds
       if (solution) {
         return solution;
       }
